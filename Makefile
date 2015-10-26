@@ -35,12 +35,12 @@ prova: UDPClientNetduino.c config_parser.c iniparser.c dictionary.c
 #
 anemonia: dictionary.o iniparser.o Anemonia.o
 	$(info linking config_parse...)
-	$(CROSS-COMP) -Wall -ggdb -o $(ANEMONIA) UDPClientNetduino.o $(LINKS) config_parser.c iniparser.o dictionary.o -L $(LIBCROSSPATH)
+	$(CROSS-COMP) -Wall -ggdb -o $(ANEMONIA) UDPClientAnemonia.o $(LINKS) config_parser.c iniparser.o dictionary.o -L $(LIBCROSSPATH)
 	$(info compilation done! )
 #
 anemonia-local: dictionary-local.o iniparser-local.o Anemonia-local.o
 	$(info linking config_parse...)
-	$(CC) -Wall -ggdb -o $(ANEMONIA) UDPClientNetduino.o $(LINKS) config_parser.c iniparser.o dictionary.o -L$(LIBPATH)
+	$(CC) -Wall -ggdb -o $(ANEMONIA) UDPClientAnemonia.o $(LINKS) config_parser.c iniparser.o dictionary.o -L$(LIBPATH)
 	$(info compilation done! )
 #
 pegaso: dictionary.o iniparser.o Pegaso.o
@@ -56,11 +56,11 @@ Standalone: dictionary.o iniparser.o StandAlone.o
 StandAlone.o: UDPClientStandalone.c
 	gcc -m32 -c UDPClientStandalone.c -I/usr/local/include -ggdb
 #
-Anemonia.o: UDPClientNetduino.c
-	$(CROSS-COMP) -c UDPClientNetduino.c -I/usr/local/include -ggdb
+Anemonia.o: UDPClientAnemonia.c
+	$(CROSS-COMP) -c UDPClientAnemonia.c -I/usr/local/include -ggdb
 
-Anemonia-local.o: UDPClientNetduino.c
-	$(CC) -c UDPClientNetduino.c -I/usr/local/include -ggdb
+Anemonia-local.o: UDPClientAnemonia.c
+	$(CC) -c UDPClientAnemonia.c -I/usr/local/include -ggdb
 
 Pegaso.o: UDPClientPegaso.c
 	arm-linux-gnueabi-gcc -c UDPClientPegaso.c -I/usr/arm-linux-gnueabi/include -ggdb
