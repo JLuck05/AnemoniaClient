@@ -152,7 +152,7 @@ int main(int argc, char *argv[]){
 				//answerStatus = checkAnswer( &duinoAnswersHead, &duinoAnswersTail, buffer,s, &soac);
 				stampaVideo(&duinoAnswersHead, &duinoAnswersTail, s);
 		
-			else if(strncmp(argv[arguments],"setch=",6) == 0){
+			}else if(strncmp(argv[arguments],"setch=",6) == 0){
 				buffer = "setmode=hs";
 				char *buffer2=(char *)calloc(32,sizeof(char));
 				memcpy(buffer2,argv[arguments], strlen(argv[arguments]));
@@ -214,6 +214,11 @@ int main(int argc, char *argv[]){
 					powerOn("all", sensorLst, s);
 					/* after powering on, starts digitizer*/
 					sendto(s,"pms=255,121",32, 0, (struct sockaddr *) &soac, sizeof(soac));
+					if( checkAnswer("pms=255,121",s) > 0 ){
+				printf("can't power on digitizer, exiting\n");
+				zlog_fatal(c, "can't power on digitizer, exiting" );
+				exit(4);
+			}
 					//stampaVideo(&headPack, &tailPack, s);
 					getvalues(&headPack, &tailPack, s, 1, sensorLst, params->directory);
 						 }
@@ -350,38 +355,40 @@ void salvaAudio(duinoData **h, sensorList *sL, char* directory){
 void getvalues(duinoData **h, duinoData **t, int s, int numPack, sensorList * sL, char* directory){
 	char * stringCh;
 	int i=3, rxreturn=0, chanIndex=1;
+	/* after powering on, starts digitizer*/
+	sendto(s,"pms=all,udptxt",sizeof("pms=all,udptxt"), 0, (struct sockaddr *) &soac, sizeof(soac));
 	/* if rx return a value > 0, something wrong happened to network so acquiring can't proceed*/
 	if(rxreturn = rx(h, t, s, numPack, 0) >0){
 		zlog_fatal(c, "network error during data receiving");
 		exit(rxreturn);
 	}
 	duinoData *temp = (*h);
-	char c[PACKDIM], *ch,*uguale,canale[2],misura[10];
+	char c[PACKDIM], *ch,*uguale,canale[2];
+	char *misura = (char*) calloc(1, 10*sizeof(char));
 	memset(c,0,sizeof(c));
 	memcpy(c,temp->pack,strlen(temp->pack));
 	/* set separator character*/
-	char *token = strtok(c, "MSG");
+	char *token = strtok(c, "MSG=");
 	/* start msg parse, starting from MSG=  */
-	
-	cercaSensoreGetValues(chanIndex,misura,sL);
+	token = strtok(token, "\t");
 	while(token != NULL){
 		//printf("stringCh:%s\n",token);
 		//ch=strchr(token, "=\t");
-		ch = strtok(token, "=\t");
-		if (ch == NULL)
-	    	    ;//printf ("'=' was not found in the src\n");
-		else
-		    {	//uguale=strchr(token, '=');
-			strncpy(uguale, token, sizeof(token));
-			printf("found value: %s during the msg parsing...\n", uguale);
+		//ch = strtok(token, "=\t");
+//		if (ch == NULL)
+//	    	    ;//printf ("'=' was not found in the src\n");
+//		else
+//		    {	//uguale=strchr(token, '=');
+			
+			strncpy(misura, token, strlen(token));
+			printf("found value: %s during the msg parsing...\n", misura);
 			//strncpy(canale, ch+1, 1);
-			strcpy(misura, uguale+1);
 			//search the channel
 			cercaSensoreGetValues(chanIndex,misura,sL);
 				
-			}
+//			}
 		
-		ch=NULL;
+//		ch=NULL;
 		token=strtok(NULL, "\t");
 		chanIndex+=1;
 		}
@@ -855,10 +862,12 @@ void powerOff(char *token, sensorList *sL, int s){
 		tempSL = tempSL->next;	
 		}
 }
-
+/**
+ * Save data to file, in a cvs format
+ * 
+ */
 void salvaMisure(sensorList *sL, char* directory){
-//salvo la misura di 1 sensore in
-//un nuovo file. Il nome con cui le salvo ancora non l'ho deciso
+
 
 	FILE *file;//file su cui scrivero'
 	char *str = (char*)malloc(sizeof(char)*MAXROWDIM);
@@ -889,7 +898,7 @@ void salvaMisure(sensorList *sL, char* directory){
 	strftime(ufdate, sizeof(ufdate), "%H:%M:%S", data);
 	
 	printf("Scrivo nel file: %s\n", str);
-	if( access( str, F_OK ) == -1){ //if file not exists try to create a new file
+	if( access( str, F_OK ) == -1){ //if file do not exists try to create a new one
 
 		if(  ( (file = fopen(str, "w") ) == NULL ) || ( access(str, W_OK) == -1 ) ){
 			zlog_fatal(c, "wrong file path or write permission restriction, data lost!");;
@@ -997,7 +1006,8 @@ void powerOn(char *token, sensorList *sList, int s) {
 						printf("can't power on seafloor sensors, exiting\n");
 						zlog_fatal(c, "can't power on seafloor sensors, exiting" );
 						exit(4);
-					}
+					}else
+					  zlog_debug(c, "sensors powerd on succesfully" );
 		}
 		else{
 		while(listaSensori != NULL){
