@@ -370,25 +370,15 @@ void getvalues(duinoData **h, duinoData **t, int s, int numPack, sensorList * sL
 	/* set separator character*/
 	char *token = strtok(c, "MSG=");
 	/* start msg parse, starting from MSG=  */
-	token = strtok(token, "\t");
+	token = strtok(token, "\t"); 	
 	while(token != NULL){
-		//printf("stringCh:%s\n",token);
-		//ch=strchr(token, "=\t");
-		//ch = strtok(token, "=\t");
-//		if (ch == NULL)
-//	    	    ;//printf ("'=' was not found in the src\n");
-//		else
-//		    {	//uguale=strchr(token, '=');
 			
 			strncpy(misura, token, strlen(token));
 			printf("found value: %s during the msg parsing...\n", misura);
-			//strncpy(canale, ch+1, 1);
+			
 			//search the channel
 			cercaSensoreGetValues(chanIndex,misura,sL);
 				
-//			}
-		
-//		ch=NULL;
 		token=strtok(NULL, "\t");
 		chanIndex+=1;
 		}
