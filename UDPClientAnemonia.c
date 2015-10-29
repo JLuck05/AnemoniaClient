@@ -22,6 +22,7 @@
 #define PACKDIM 32768
 #define MAXROWDIM 40
 #define directoryTest "./"
+#define TEST 1 /* if TEST is set to 1 --> execute in debug mode */
 /*-------------------------------------------------------------------------*/
 				/*Codici errori*/
 /*
@@ -796,7 +797,7 @@ void powerOff(char *token, sensorList *sL, int s){
 	sensorList *tempSL = sL;
 	char * buffer = (char*)calloc(32,sizeof(char));
 	duinoData *RispostaHead = NULL, * RispostaTail = NULL;
-	if ( strcmp(token, "all") == 0 ){
+	if ( strncmp(token, "all", sizeof(token)) == 0 ){
 			strcpy(buffer, "pms=0,0");
 			sendto(s,buffer,32, 0, (struct sockaddr *) &soac, sizeof(soac));
 			if( checkAnswer(buffer,s) > 0 ){
@@ -805,8 +806,9 @@ void powerOff(char *token, sensorList *sL, int s){
 				exit(4);
 			}
 			else{
-				zlog_info(c, "sensor powered off successfully" );
+				zlog_info(c, "sensors powered off successfully" );
 			}
+		return ;
 	}
 	while(tempSL != NULL){
 
