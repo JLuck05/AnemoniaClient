@@ -263,31 +263,38 @@ return 0;
 
 
 void getData(duinoData **h, duinoData **t, int s, int numPack, sensorList *sL, char* directory){
+	time_t rawtime;
+   	time (&rawtime);
+   	struct tm* data;
+	char *ufdate[20], newname[40];
+	char *newname = (char*) calloc(1, sizeof(char*)*40);
 	
-	sendto(s,"getdata",8, 0, (struct sockaddr *) &soac, sizeof(soac));
-
-	int index = 0, retry=3;
+	sendto(s,"pms=hydro,txt",8, 0, (struct sockaddr *) &soac, sizeof(soac));
 	
-	while(index < numPack){
+	int retry=3;
 		if( (rx( h, t, s, 1, 0) > 0)  && (retry>0) ) { /* se è andato in timeout rx ritorna un errore, quindi ripeto la misura per 3 volte al massimo*/
-		sendto(s,"getdata",8, 0, (struct sockaddr *) &soac, sizeof(soac));
+		sendto(s,"pms=hydro,txt",8, 0, (struct sockaddr *) &soac, sizeof(soac));
 		retry--;
 		continue;
 			}
 		/*se è uscito perchè non raggiunge netDuino, termino*/
 		if(retry=0) {
-			zlog_fatal(c, "nedDuino irraggiungibile, termino");
+			zlog_fatal(c, "server unreachable, exiting...");
 			exit(1);
 		}
-		retry=3;
-		sendto(s,"getdata",8, 0, (struct sockaddr *) &soac, sizeof(soac));
-		index++;
-		//printf("Ricevuti %d pacchetti\n",index);
-	}
-	//if(setch==1){//caso hydro chiamo salvaAudio che poi a sua volta esegue il codec flac
-		salvaAudio(h, sL, directory);				
-	//		}
-
+		data = localtime(&rawtime);
+		strftime(ufdate, sizeof(ufdate), "%Y%m%d_%H:%M:%S", data);
+		char *date = (char*)malloc(strlen(ufdate)); // questa stringa contiene la data
+		strcpy(date,ufdate);
+		strcpy(newname,directory);
+		strcat(newname,"Audio/");
+		sleep(11);
+		if ( access( raw.txt, F_OK ) == -1 ){
+		  int ret = rename("raw.txt", newname);
+		  if( ret > 0)
+		      zlog_fatal(c, "can't find file generated! exiting...");
+		      exit(1);
+		}
 
 }
 
