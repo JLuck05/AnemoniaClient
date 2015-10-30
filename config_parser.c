@@ -162,19 +162,6 @@ for (index=1;index<nsections;index++){
 	free(channels);
 	sens->sensore->chanNumber = channelN;
 	strcpy(s, sens->sensore->sensorName);
-	strcat(s, ":UnitaMisura");
-	sens->sensore->unitadiMisura = (char*)malloc(sizeof(char)*10);
-		if (sens->sensore->unitadiMisura ==NULL){
-			zlog_fatal(c, "Error 2: cannot allocate enough memory, exiting...");
-			return NULL;
-		}
-	
-	strcpy(sens->sensore->unitadiMisura, iniparser_getstring(ini, s, NULL));
-
-	if (sens->sensore->unitadiMisura ==NULL){
-		zlog_fatal(c, "Error 2: cannot find unitadiMisura");
-		return NULL;
-	}
 
 	/*Se è la sezione relativa all'idrofono vanno riempiti campi addizionali*/
 	if( strstr(sens->sensore->sensorName, "hydro") != NULL ){
