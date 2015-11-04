@@ -105,7 +105,8 @@ for (index=1;index<nsections;index++){
 	sens->next = NULL;
 	sens->availableChannels = NULL;
 	sens->sensore  = ( sensors* )malloc(sizeof(sensors));
-		if (sens->sensore ==NULL){
+	sens->sensore->idrofono = NULL;
+		if (sens->sensore == NULL){
 		zlog_fatal(c, "Error 2: cannot allocate enough memory, exiting...");
 		return NULL;
 		}
@@ -181,6 +182,19 @@ for (index=1;index<nsections;index++){
 	}
 
 
+	/* inserisce il valore del tempo di acquisizione*/
+	strcpy(s, sens->sensore->sensorName);
+	strcat(s, ":atime");
+	strcpy(s, iniparser_getstring(ini, s, NULL) );
+	printf("atime: %s\n", s);
+	if(s != NULL ){
+
+		int sleepTime = atoi( s );
+		sens->sensore->idrofono->samplingTime = sleepTime;
+	}
+
+	
+	/* inserisce i bps */
 	strcpy(s, sens->sensore->sensorName);
 	strcat(s, ":bps");
 	strcpy(s, iniparser_getstring(ini, s, NULL) );

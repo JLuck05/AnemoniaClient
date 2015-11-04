@@ -60,7 +60,7 @@ void liberaMemoria(sensorList **s, char *nome);
 sensors * cercaSensore(int canale,sensorList *sList);
 void insert(duinoData **h, duinoData **t, char *r, int bScritti);
 void stampaVideo(duinoData **h, duinoData **t, int s);
-void salvaMisure(sensorList *sL, char* directory);
+int salvaMisure(sensorList *sL, char* directory);
 int rx(duinoData **h, duinoData **t, int s, int numPack, int test);
 void getBlockAllChannels(duinoData **h, duinoData **t, int s, int numPack, sensorList * sL);
 void getBlockSingleChannel(duinoData **h, duinoData **t, int s, int numPack, sensorList * sL);
@@ -413,12 +413,12 @@ void getvalues(duinoData **h, duinoData **t, int s, int numPack, sensorList * sL
 		exit(rxreturn);
 	}
 	duinoData *temp = (*h);
-	char c[PACKDIM], *ch,*uguale,canale[2];
+	char row[PACKDIM], *ch,*uguale,canale[2];
 	char *misura = (char*) calloc(1, 10*sizeof(char));
-	memset(c,0,sizeof(c));
-	memcpy(c,temp->pack,strlen(temp->pack));
+	memset(row,0,sizeof(row));
+	memcpy(row,temp->pack,strlen(temp->pack));
 	/* set separator character*/
-	char *token = strtok(c, "MSG=");
+	char *token = strtok(row, "MSG=");
 	/* start msg parse, starting from MSG=  */
 	if ( TEST ) printf("msg received: %s", token);
 	token = strtok(token, "\t");
@@ -429,7 +429,6 @@ void getvalues(duinoData **h, duinoData **t, int s, int numPack, sensorList * sL
 			strncpy(misura, token, strlen(token));
 			printf("found value: %s during the msg parsing...\n", misura);
 			
-			//search the channel
 			cercaSensoreGetValues(chanIndex,misura,sL);
 				
 		token=strtok(NULL, "\t");
@@ -437,7 +436,12 @@ void getvalues(duinoData **h, duinoData **t, int s, int numPack, sensorList * sL
 		}
 
 	powerOff("all", sL, s);	
-	salvaMisure(sL, directory);
+	if( salvaMisure(sL, directory) == 0 ){
+	    zlog_fatal(c, "error during writing into sample file, exiting...");
+	    exit(2);
+	}
+	else 
+	  zlog_debug(c, "samples saved succesfully!");
 }
 
 
@@ -448,9 +452,8 @@ void cercaSensoreGetValues(int canale, char *misura,sensorList *sList){
 		chanList *chL=sl->sensore->chHead;
 		/* scorre la lista dei sensori */
 		while(chL != NULL){
-//			printf("Sensore: %s Controllo se %d=%d \n",sl->sensore->sensorName,chL->val,canale);
 			if(chL->val==canale){
-//				printf("canale %d trovato\n",chL->val);
+				if( TEST )  printf("canale %d trovato\n",chL->val);
 				sl->sensore->sData=(sensorData **)calloc(1, sizeof(sensorData *));
 				int i=0, bTmpScritti=0;	
 				int aa=(strlen(misura)/3);
@@ -463,7 +466,7 @@ void cercaSensoreGetValues(int canale, char *misura,sensorList *sList){
 						if(strlen(misura)%3>0)
 							bTmpScritti=strlen(misura)%3;
 						   }	
-//					printf("Sizeof:%d inserisco %d bytes",strlen(misura),bTmpScritti);
+					if( TEST ) printf("Sizeof:%d inserisco %d bytes\n",strlen(misura),bTmpScritti);
 					insertByteColonna(sl->sensore->sData, &(misura[i]), bTmpScritti);
 					i+=bTmpScritti;				
 				}
@@ -909,7 +912,7 @@ void powerOff(char *token, sensorList *sL, int s){
  * Save data to file, in a cvs format
  * 
  */
-void salvaMisure(sensorList *sL, char* directory){
+int salvaMisure(sensorList *sL, char* directory){
 
 
 	FILE *file;//file su cui scrivero'
@@ -969,6 +972,12 @@ void salvaMisure(sensorList *sL, char* directory){
 		memcpy(headerSensore, "Timestamp", strlen("Timestamp"));
 	}
 	
+	
+	if( TEST ){
+		printf("header: %s \t string : %s \n", headerSensore, str);
+	}
+	
+	
 	while(tempSL != NULL){
 //	printf("Entro nel while\n");
 		sensors *tempSensor=tempSL->sensore;
@@ -978,7 +987,12 @@ void salvaMisure(sensorList *sL, char* directory){
 			tempSL= tempSL->next;
 			continue;			
 		}
-		//printf("Sensore:%s \n",tempSensor->sensorName);
+		
+		
+	  if( TEST ){
+		printf("writing sample of sensor ID: %s\n", tempSensor->sensorName);
+	}
+		
 		strcat( str,separator);
 		//metto il nome del sensore
 		if(newFile == 1){
@@ -1013,13 +1027,18 @@ void salvaMisure(sensorList *sL, char* directory){
 		fwrite(headerSensore, sizeof(char), strlen(headerSensore), file);
 		fwrite("\n", sizeof(char), strlen("\n"), file);		
 	}
+	
+	if( TEST ){
+		printf("string : %s \n", str);
+	}
+	
 	fwrite(str, sizeof(char), strlen(str), file);
 	fwrite("\n", sizeof(char), strlen("\n"), file);
 
 	if( fflush(file) !=0 ) 
 		zlog_fatal(c, "fflush error");
-	fclose(file);
-	zlog_debug(c, "sample saved successfully");
+	int success = fclose(file);
+	return (success == 0 ? 0 : 1) ;
 }
 
 /*
@@ -1047,7 +1066,7 @@ void powerOn(char *token, sensorList *sList, int s) {
 					sendto(s,buffer,32, 0, (struct sockaddr *) &soac, sizeof(soac));
 					if( checkAnswer(buffer,s) > 0 ){
 						printf("can't power on seafloor sensors, exiting\n");
-						zlog_fatal(c, "can't power on seafloor sensors, exiting" );
+						zlog_fatal(c, "can't power on seafloor sensors, exiting");
 						exit(4);
 					}else
 					  zlog_debug(c, "sensors powerd on succesfully" );
