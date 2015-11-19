@@ -19,7 +19,6 @@
 #include "zlog.h"
 
 #define canaliTot 8 
-#define PACKDIM 32768
 #define MAXROWDIM 40
 #define directoryTest "./"
 #define SERVERDIR "./UDPServer/"
@@ -27,7 +26,10 @@
 
 /* define commands set */
 #define SADON 		"pms=0,1"
-#define ALLCHON 	"pms=255,120"
+#define ALLCHON 	"pms=255,121"
+#define HALFCHON 	"pms=89,121"
+#define POWHALF		"PMS=0,97"
+#define POWALL		"PMS=0,121"
 #define ALLON		"pms=255,121"
 #define AUDIORAW	"start=raw,"
 #define STATUS		"getstatus"
@@ -35,6 +37,7 @@
 #define SETALL		"setmode=all,ls"
 #define GETTXT		"start=txt"
 #define STOP		"stop"
+#define FLACMODE	"stop,flac"
 
 /*-------------------------------------------------------------------------*/
 				/*Codici errori*/
@@ -69,7 +72,8 @@ void setchannel(char *token, sensorList * sList, int s);
 void getvalues(duinoData **h, duinoData **t, int s, int numPack, sensorList * sL, char* directory);
 void cercaSensoreGetValues(int canale, char *misura,sensorList *sList);
 void salvaAudio(duinoData **h, sensorList *sL, char* directory);
-void getData(duinoData **h, duinoData **t, int s, sensorList *sL, char* directory);
+/* if flac integer is  1 --> tell to the server to convert audio data in flac format*/
+void getData(duinoData **h, duinoData **t, int s, sensorList *sL, char* directory, uint flac);
 int checkAnswer(char* command,int sock);
 /*-------------------------------------------------------------------------*/
 		/* VARIABILI GLOBALI */
@@ -187,7 +191,7 @@ int main(int argc, char *argv[]){
 				duinoAnswersHead->byteScritti=0;
 				duinoAnswersHead->prec=NULL;
 				duinoAnswersHead->next=NULL;
-				memset(duinoAnswersHead->pack,0,1392);
+				memset(duinoAnswersHead->pack,0,UDP_PACK_DIM);
 
 			
 				printf("Richiesta setchannel\n");
@@ -204,7 +208,7 @@ int main(int argc, char *argv[]){
 				duinoAnswersHead->byteScritti=0;
 				duinoAnswersHead->prec=NULL;
 				duinoAnswersHead->next=NULL;
-				memset(duinoAnswersHead->pack,0,1392);
+				memset(duinoAnswersHead->pack,0,UDP_PACK_DIM);
 
 			
 //				if(strstr( argv[arguments], "hydro" ) != NULL)//se è hydro fa la fill se no start=block
@@ -219,20 +223,20 @@ int main(int argc, char *argv[]){
 				duinoAnswersHead->byteScritti=0;
 				duinoAnswersHead->prec=NULL;
 				duinoAnswersHead->next=NULL;
-				memset(duinoAnswersHead->pack,0,1392);
+				memset(duinoAnswersHead->pack,0,UDP_PACK_DIM);
 
 						 }
 				else if(strcmp(argv[arguments],"getvalues")==0){
 					//printf("Richiesta getvalues\n");
 					zlog_debug(c, "command: getvalues");
-					powerOn("all", sensorLst, s);
+					//powerOn("all", sensorLst, s);
 					/* after powering on, starts digitizer*/
-					sendto(s,"pms=255,121",32, 0, (struct sockaddr *) &soac, sizeof(soac));
-					if( checkAnswer("pms=255,121",s) > 0 ){
+					/*sendto(s,ALLON,32, 0, (struct sockaddr *) &soac, sizeof(soac));
+					if( checkAnswer(ALLON,s) > 0 ){
 				printf("can't power on digitizer, exiting\n");
 				zlog_fatal(c, "can't power on digitizer, exiting" );
 				exit(4);
-			}
+			}*/
 					//stampaVideo(&headPack, &tailPack, s);
 					getvalues(&headPack, &tailPack, s, 1, sensorLst, params->directory);
 						 }
@@ -258,10 +262,21 @@ int main(int argc, char *argv[]){
 						zlog_debug(c, "Richiesta getdata");
 						//sendto(s,"getdata",32, 0, (struct sockaddr *) &soac, sizeof(soac));
 						//stampaVideo(&headPack, &tailPack, s);
-						getData(&headPack, &tailPack, s, sensorLst, params->directory);
+						getData(&headPack, &tailPack, s, sensorLst, params->directory, 0);
+					 }
+					 else if(strcmp(argv[arguments],"getflac")==0){
+						/*codice aggiunto da Gian*/
+						//powerOn("all", sensorLst, s);
+						/*---------------------*/
+						printf("Getflac is requested...\n");
+						zlog_debug(c, "Getflac requested");
+						//sendto(s,"getdata",32, 0, (struct sockaddr *) &soac, sizeof(soac));
+						//stampaVideo(&headPack, &tailPack, s);
+						getData(&headPack, &tailPack, s, sensorLst, params->directory, 1);
 					 }
 					 else if(argv[arguments] != NULL ){
-							sendto(s,argv[arguments],32, 0, (struct sockaddr *) &soac, sizeof(soac));
+							if (TEST ) printf("sending: %s \n", argv[arguments]);
+							sendto(s,argv[arguments],128, 0, (struct sockaddr *) &soac, sizeof(soac));
 							stampaVideo(&headPack, &tailPack, s);
 					 }
 					
@@ -284,9 +299,9 @@ return 0;
 #define GETTXT		"start=txt"
 #define STOP		"stop"
 */
-void getData(duinoData **h, duinoData **t, int s, sensorList *sL, char* directory){
+void getData(duinoData **h, duinoData **t, int s, sensorList *sL, char* directory, uint flac){
 	int sleepSeconds = 0;
-	char * audiocmd = calloc(1, sizeof(char)*40);
+	char * audiocmd = calloc(1, sizeof(char)*128);
 	strcpy(audiocmd, AUDIORAW);
 	strcat(audiocmd, directory);
 	sendto(s,SADON,32, 0, (struct sockaddr *) &soac, sizeof(soac));
@@ -309,12 +324,11 @@ void getData(duinoData **h, duinoData **t, int s, sensorList *sL, char* director
 		
 	if( TEST ) printf("sending %s\n", audiocmd);
 		
-		sendto(s,audiocmd,64, 0, (struct sockaddr *) &soac, sizeof(soac));
+		sendto(s,audiocmd,128, 0, (struct sockaddr *) &soac, sizeof(soac));
 		
 	sensorList *tempSL = sL;
 	while(tempSL != NULL){
 	  
-	if( TEST ) printf("Entro nel while\n");
 	 /* loop until find hidrophone */
 	if (tempSL->sensore->idrofono != NULL){
 		sleepSeconds = tempSL->sensore->idrofono->samplingTime;
@@ -330,6 +344,9 @@ void getData(duinoData **h, duinoData **t, int s, sensorList *sL, char* director
 	
 	sleep(sleepSeconds);
 	
+	if (flac)
+	  sendto(s,FLACMODE,32, 0, (struct sockaddr *) &soac, sizeof(soac));
+	else 
 	sendto(s,STOP,32, 0, (struct sockaddr *) &soac, sizeof(soac));
 	
 	zlog_debug(c, "audio file recorded successfully");
@@ -401,11 +418,20 @@ void getvalues(duinoData **h, duinoData **t, int s, int numPack, sensorList * sL
 	char * stringCh;
 	int i=3, rxreturn=0, chanIndex=1;
 	/* set sampling rate to lowspeed */
+	powerOn("all", sL, s);
+	sleep(1);
 	sendto(s,SETALL,32, 0, (struct sockaddr *) &soac, sizeof(soac));
+	if( TEST ){
+				printf("sending: %s ...\n", SETALL);
+			}
 	if( checkAnswer(SETALL,s) > 0 ){
 				if( TEST ) printf("something wrong appened, can't set Low Speed sampling...\n");
 				zlog_fatal(c, "something wrong appened, can't set Low Speed sampling..." );
 			}
+	if( TEST ){
+				printf("sending: %s ...\n", GETTXT);
+			}
+	sleep(1);
 	sendto(s,GETTXT,32, 0, (struct sockaddr *) &soac, sizeof(soac));
 	/* if rx return a value > 0, something wrong happened to network so acquiring can't proceed*/
 	if(rxreturn = rx(h, t, s, numPack, 0) >0){
@@ -413,7 +439,7 @@ void getvalues(duinoData **h, duinoData **t, int s, int numPack, sensorList * sL
 		exit(rxreturn);
 	}
 	duinoData *temp = (*h);
-	char row[PACKDIM], *ch,*uguale,canale[2];
+	char row[UDP_PACK_DIM], *ch,*uguale,canale[2];
 	char *misura = (char*) calloc(1, 10*sizeof(char));
 	memset(row,0,sizeof(row));
 	memcpy(row,temp->pack,strlen(temp->pack));
@@ -427,7 +453,7 @@ void getvalues(duinoData **h, duinoData **t, int s, int numPack, sensorList * sL
 	  
 			memset(misura, 0, strlen(misura));
 			strncpy(misura, token, strlen(token));
-			printf("found value: %s during the msg parsing...\n", misura);
+			if ( TEST ) printf("found value: %s during the msg parsing...\n", misura);
 			
 			cercaSensoreGetValues(chanIndex,misura,sL);
 				
@@ -447,13 +473,16 @@ void getvalues(duinoData **h, duinoData **t, int s, int numPack, sensorList * sL
 
 void cercaSensoreGetValues(int canale, char *misura,sensorList *sList){
 	sensorList * sl=sList;
+	char *pos;
 	//printf("Cerca sensore che usa questo canale:%d...",canale);
+	if ((pos=strchr(misura, '\n')) != NULL) *pos = '\0';
 	while(sl!=NULL){		
 		chanList *chL=sl->sensore->chHead;
 		/* scorre la lista dei sensori */
 		while(chL != NULL){
 			if(chL->val==canale){
-				if( TEST )  printf("canale %d trovato\n",chL->val);
+		
+				if( TEST )  printf("canale %d trovato\n, inserisco la misura: ",chL->val, misura);
 				sl->sensore->sData=(sensorData **)calloc(1, sizeof(sensorData *));
 				int i=0, bTmpScritti=0;	
 				int aa=(strlen(misura)/3);
@@ -1052,7 +1081,7 @@ void powerOn(char *token, sensorList *sList, int s) {
 	zlog_debug(c, "powering on sensors requested");
 
 		sensorList *listaSensori = sList;
-		char *buffer = (char*)calloc(14,sizeof(char));
+		char *buffer = (char*)calloc(32,sizeof(char));
 		chanList *channels;
 		char * stringCh = (char*)calloc(4,sizeof(char));
 		//char *splitString = strtok(token, "=");
@@ -1062,13 +1091,45 @@ void powerOn(char *token, sensorList *sList, int s) {
 		duinoData *duinoRispostaHead = NULL, * duinoRispostaTail = NULL;
 
 		if ( strcmp(token, "all") == 0 ){
-					strcpy(buffer, "pms=255,120");
+		  
+		  /* POWHALF -> POWALL -> HALFCHON ->ALLCHON */
+		  
+					strcpy(buffer, POWHALF);
+					sendto(s,buffer,32, 0, (struct sockaddr *) &soac, sizeof(soac));
+					if( checkAnswer(buffer,s) > 0 ){
+						printf("can't power on seafloor sensors, exiting\n");
+						zlog_fatal(c, "can't power on seafloor sensors, exiting");
+						exit(4);
+					}
+					/* repeat the sequence for the other half loads*/
+					memset(buffer, 0, sizeof(buffer));
+					strcpy(buffer, POWALL);
+					sendto(s,buffer,32, 0, (struct sockaddr *) &soac, sizeof(soac));
+					if( checkAnswer(buffer,s) > 0 ){
+						printf("can't power on seafloor sensors, exiting\n");
+						zlog_fatal(c, "can't power on seafloor sensors, exiting");
+						exit(4);
+					}
+					
+					/* power on half channels*/
+					memset(buffer, 0, sizeof(buffer));
+					strcpy(buffer, HALFCHON);
+					sendto(s,buffer,32, 0, (struct sockaddr *) &soac, sizeof(soac));
+					if( checkAnswer(buffer,s) > 0 ){
+						printf("can't power on seafloor sensors, exiting\n");
+						zlog_fatal(c, "can't power on seafloor sensors, exiting");
+						exit(4);
+					}
+					/* repeat the sequence for the other half*/
+					memset(buffer, 0, sizeof(buffer));
+					strcpy(buffer, POWALL);
 					sendto(s,buffer,32, 0, (struct sockaddr *) &soac, sizeof(soac));
 					if( checkAnswer(buffer,s) > 0 ){
 						printf("can't power on seafloor sensors, exiting\n");
 						zlog_fatal(c, "can't power on seafloor sensors, exiting");
 						exit(4);
 					}else
+					  
 					  zlog_debug(c, "sensors powerd on succesfully" );
 		}
 		else{
@@ -1273,7 +1334,7 @@ int rx(duinoData **h, duinoData **t, int s, int numPack, int test){
 //praticamente attende la ricezione di un pacchetto per 3*attesa secondi.
 	
 	int attesa=10, tentativi=3, stop=1, n=0, k=1, dimBRx=0;
-	char rxBff[1392];
+	char rxBff[UDP_PACK_DIM];
 	struct timeval time;
 //	time.tv_sec=attesa;
 //	time.tv_usec=0;
@@ -1308,10 +1369,10 @@ int rx(duinoData **h, duinoData **t, int s, int numPack, int test){
 			else {
 		
 				int l=sizeof(soac);
-				memset(rxBff,0,1392);
-				int o=recvfrom(s,rxBff,1392,0,(struct sockaddr *)&soac, &l);
+				memset(rxBff,0,UDP_PACK_DIM);
+				int o=recvfrom(s,rxBff,UDP_PACK_DIM,0,(struct sockaddr *)&soac, &l);
 				dimBRx+=o;
-//				printf("%d Ho ricevuto %d bytes\n", k, o);
+				printf("%d Ho ricevuto %d bytes\n", k, o);
 					
 			/*	int asd=0;
 				for(;asd<o;asd++){
@@ -1355,7 +1416,7 @@ void insert(duinoData **h, duinoData **t, char *r, int bScritti){
 	nodo->next = NULL;
 	nodo->prec = (*t);
 	nodo->byteScritti = bScritti;
-	memset(nodo->pack,0,1392);
+	memset(nodo->pack,0,UDP_PACK_DIM);
 	//strcpy(nodo->pack,r);//copio il pacchetto ricevuto nel nodo
 //	printf("ByteScritti %d strlen %d\n", bScritti, strlen(r));
 	memcpy(nodo->pack, r, bScritti);

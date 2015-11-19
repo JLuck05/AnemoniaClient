@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-#define UDP_PACK_DIM 1394
+#define UDP_PACK_DIM 32768
 
 typedef struct hydro_s{
 	char  *sign;
@@ -22,6 +22,7 @@ typedef struct hydro_s{
 	int canali;//numero canali
 	int bps;
 	int sampleRate;
+	int samplingTime;
 } hydro;
 
 typedef struct duinoD{
