@@ -1,11 +1,14 @@
 /*
-* Authors: Gianluca Lazzaro, Luca Pellegrino
-* This code was developed to achieve the seafloor sensors automated sampling. 
-* First of all the program set up an UDP Client, getting IP adress, port and directory in wich save files through configuration file. 
-* Secondly builds up a chained list of sensors struct and performs the command passed as argument by the command line
-* sending the right commands to the remote UDP Server. 
-*
-*/
+ * *********************************************
+ * @Authors: Gianluca Lazzaro, Luca Pellegrino
+ * *********************************************
+ *  UDP Client ver. 2.0
+ * This code was developed to achieve the seafloor sensors automated sampling. 
+ * First of all the program set up an UDP Client, getting IP adress, port and directory in wich save files through configuration file. 
+ * Secondly builds up a chained list of sensors struct and performs the command passed as argument by the command line
+ * sending the right commands to the remote UDP Server. 
+ */
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -127,7 +130,7 @@ int main(int argc, char *argv[]){
 		exit(3);
 	}
 	
-	zlog_info(c, "executing Client");
+	zlog_info(c, "UDPClient ver. 2.0 started...");
 
 	memset(buffer, 0, 32);
 

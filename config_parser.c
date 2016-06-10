@@ -106,6 +106,7 @@ for (index=1;index<nsections;index++){
 	sens->availableChannels = NULL;
 	sens->sensore  = ( sensors* )malloc(sizeof(sensors));
 	sens->sensore->idrofono = NULL;
+	sens->sensore->sData = NULL;
 		if (sens->sensore == NULL){
 		zlog_fatal(c, "Error 2: cannot allocate enough memory, exiting...");
 		return NULL;
@@ -167,7 +168,7 @@ for (index=1;index<nsections;index++){
 	/*Se è la sezione relativa all'idrofono vanno riempiti campi addizionali*/
 	if( strstr(sens->sensore->sensorName, "hydro") != NULL ){
 
-	bzero(s, sizeof(s));
+	memset(s, 0, sizeof(s));
 
 	sens->sensore->idrofono = ( hydro* )malloc(sizeof(hydro));
 
